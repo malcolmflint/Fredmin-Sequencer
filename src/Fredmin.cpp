@@ -1,4 +1,4 @@
-#include "Tutorial.hpp"
+#include "Fredmin.hpp"
 
 
 // The plugin-wide instance of the Plugin class
@@ -10,12 +10,12 @@ void init(rack::Plugin *p) {
 	// It must only contain letters, numbers, and characters "-" and "_". No spaces.
 	// To guarantee uniqueness, it is a good idea to prefix the slug by your name, alias, or company name if available, e.g. "MyCompany-MyPlugin".
 	// The ZIP package must only contain one folder, with the name equal to the plugin's slug.
-	p->slug = "Tutorial";
+	p->slug = "Fredmin-Sequencer";
 #ifdef VERSION
 	p->version = TOSTRING(VERSION);
 #endif
-	p->website = "https://github.com/VCVRack/Tutorial";
-	p->manual = "https://github.com/VCVRack/Tutorial/blob/master/README.md";
+	p->website = "https://github.com/malcolmflint/Fredmin-Sequencer";
+	p->manual = "https://github.com/malcolmflint/Fredmin-Sequencer/README.md";
 
 	// For each module, specify the ModuleWidget subclass, manufacturer slug (for saving in patches), manufacturer human-readable name, module slug, and module name
 	p->addModel(createModel<MyModuleWidget>("Tutorial", "MyModule", "My Module", OSCILLATOR_TAG));

@@ -1,5 +1,5 @@
-SLUG = Template
-VERSION = 0.5.0
+SLUG = Fredmin-Sequencer
+VERSION = 0.0.1
 
 # FLAGS will be passed to both the C and C++ compiler
 FLAGS +=
@@ -18,3 +18,7 @@ DISTRIBUTABLES += $(wildcard LICENSE*) res
 
 # Include the VCV plugin Makefile framework
 include ../../plugin.mk
+
+run:
+	cd ../.. ; make run
+
