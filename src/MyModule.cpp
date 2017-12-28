@@ -9,7 +9,7 @@ struct MyModule : Module {
 		NUM_PARAMS
 	};
 	enum InputIds {
-		CLOCK_INPUT,
+		TEMPO_INPUT,
         PITCH_INPUT,
 		NUM_INPUTS
 	};
@@ -18,22 +18,26 @@ struct MyModule : Module {
         GATE_OUTPUT,
 		NUM_OUTPUTS
 	};
+    enum LightIds { OFF, ON, CHALF, C1, C2, C4, C8, C3, C6, B1, B2, B3, B4, B5, B6,
+        B7, B8, B9, B10, B11, B12, B13, B14, B15, B16, B17, B18, B19, B20, B21, B22,
+        B23, B24, B25, B26, B27, B28, B29, B30, B31, NUM_LIGHTS };
+    enum CLightIndeces { CHALF_I, C1_I, C2_I, C4_I, C8_I, C3_I, C6_I, NUM_C };
 
     struct CLight {
-        float phase;
+        float phase = 0.0;
         float freq;
         int id;
     };
 
-	float phase, sampleLength, period;
-    CLight chalf, c1, c2, c4,c8, c3, c6;
+	float phase, sampleLength, freq;
+    CLight cLights[NUM_C];
     uint32_t shiftreg;
     unsigned interval:4;
     unsigned theme:4;
 
 	MyModule();
 	void step() override;
-    void blinkCLights(CLight);
+    void blinkCLights(CLight *);
 
 	// For more advanced Module features, read Rack's engine.hpp header file
 	// - toJson, fromJson: serialization of internal data
@@ -42,46 +46,41 @@ struct MyModule : Module {
 };
 
 
-MyModule::MyModule() : Module(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, 41) {
-    chalf.id = 2;
-    c1.id = 3;
-    c2.id = 4;
-    c4.id = 5;
-    c8.id = 6;
-    c3.id = 7;
-    c6.id = 8;
-    chalf.phase = 0.5;
-    c1.freq = 1.0;
-    c2.freq = 2.0;
-    c4.freq = 4.0;
-    c8.freq = 8.0;
-    c3.freq = 3.0;
-    c6.freq = 6.0;
+MyModule::MyModule() : Module(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS) {
+    lights[ON].value = 1.0;
+    cLights[CHALF_I].id = CHALF;
+    cLights[C1_I].id = C1;
+    cLights[C2_I].id = C2;
+    cLights[C4_I].id = C4;
+    cLights[C8_I].id = C8;
+    cLights[C3_I].id = C3;
+    cLights[C6_I].id = C6;
+    cLights[CHALF_I].freq = 0.5;
+    cLights[C1_I].freq = 1.0;
+    cLights[C2_I].freq = 2.0;
+    cLights[C4_I].freq = 4.0;
+    cLights[C8_I].freq = 8.0;
+    cLights[C3_I].freq = 3.0;
+    cLights[C6_I].freq = 6.0;
 }
 
 void MyModule::step() {
     
 	sampleLength = 1.0 / engineGetSampleRate();
 
-    period = 1.0 / params[TEMPO_PARAM].value;;
-    blinkCLights(chalf);
-    blinkCLights(c1);
-    blinkCLights(c2);
-    blinkCLights(c4);
-    blinkCLights(c8);
-    blinkCLights(c3);
-    blinkCLights(c6);
-	// Compute the frequency from the pitch parameter and input
-//	float pitch = params[PITCH_PARAM].value;
-//	pitch += inputs[PITCH_INPUT].value;
-//	pitch = clampf(pitch, -4.0, 4.0);
-//	float freq = 440.0 * powf(2.0, pitch);
-//
-	// Accumulate the phase
-//    phase += freq * deltaTime;
-//   	if (phase >= 1.0)
-//   		phase -= 1.0;
-//
+	float tempo = params[TEMPO_PARAM].value;
+	tempo += inputs[TEMPO_INPUT].value;
+	tempo = clampf(tempo, -2.0, 2.0);
+	freq = 8.0 * powf(2.0, tempo);
+
+    phase += freq * sampleLength;
+   	if (phase >= 0.5) {
+   		phase -= 0.5;
+    
+        for (int i = 0; i < NUM_C; ++i)
+            blinkCLights(&cLights[i]);
+    }
+
 //	// Compute the sine output
 //	float sine = sinf(2 * M_PI * phase);
 //	outputs[SINE_OUTPUT].value = 5.0 * sine;
@@ -93,13 +92,12 @@ void MyModule::step() {
 //	lights[BLINK_LIGHT].value = (blinkPhase < 0.5) ? 1.0 : 0.0;
 }
 
-void MyModule::blinkCLights(CLight cLight) {
-    cLight.phase += sampleLength;
-
-    if (cLight.phase >= cLight.freq * period)
-        cLight.phase -= 2 * cLight.freq * period;
-//    lights[cLight.id].value = (cLight.phase < 0) ? 1.0 : 0.0;
-    lights[cLight.id].value = 1.0;
+void MyModule::blinkCLights(CLight *cLight) {
+    cLight->phase += sampleLength;
+    if (cLight->phase >= cLight->freq * freq) {
+        cLight->phase -= cLight->freq * freq;
+    }
+    lights[cLight->id].value = (cLight->phase < cLight->freq * freq / 2) ? 1.0 : 0.0;
 }
 
 MyModuleWidget::MyModuleWidget() : num_blue_lights (9), num_green_lights (31) {
@@ -122,7 +120,7 @@ MyModuleWidget::MyModuleWidget() : num_blue_lights (9), num_green_lights (31) {
     int firstKnobX = 28;
     int knobHeight = 48;
 	addParam(createParam<Davies1900hBlackKnob>(Vec(firstKnobX, knobHeight), module, MyModule::PITCH_PARAM, -3.0, 3.0, 0.0));
-	addParam(createParam<Davies1900hBlackKnob>(Vec(firstKnobX + 3 * RACK_GRID_WIDTH, knobHeight), module, MyModule::TEMPO_PARAM, 0.0, 7.0, 0.0));
+	addParam(createParam<Davies1900hBlackKnob>(Vec(firstKnobX + 3 * RACK_GRID_WIDTH, knobHeight), module, MyModule::TEMPO_PARAM, -2.0, 2.0, 0.0));
     drawLights();
 
 	addInput(createInput<PJ301MPort>(Vec(33, 186), module, MyModule::PITCH_INPUT));
@@ -135,13 +133,14 @@ void MyModuleWidget::drawLights() {
     int x = 90;
     int y = 110;
     int spacing = 12;
-    for (int i = 0; i < num_blue_lights; ++i) {
+    for (int i = 0; i < 2 + MyModule::NUM_C; ++i) {
 	    addChild(createLight<MediumLight<BlueLight>>(Vec(x, y), module, i));
         x += spacing;
     }
-    for (int i = 0; i < num_green_lights; ++i) {
+    for (int i = 2 + MyModule::NUM_C; i < MyModule::NUM_LIGHTS; ++i) {
 	    addChild(createLight<MediumLight<GreenLight>>(Vec(x, y), module, i));
         x += spacing;
     }
+
 }
 
